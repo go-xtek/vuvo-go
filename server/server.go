@@ -112,5 +112,8 @@ func (s server) Start() {
 }
 
 func (s server) RegisterServer(fn RegisterHandler) error {
+	if err := fn(s.grpcServer); err != nil {
+		return err
+	}
 	return nil
 }
