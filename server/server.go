@@ -10,8 +10,10 @@ import (
 	"syscall"
 	"time"
 
+	grpcTransport "github.com/go-xtek/vuvo-go/grpc"
 	"github.com/go-xtek/vuvo-go/l"
 
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"google.golang.org/grpc"
 )
 
@@ -32,6 +34,7 @@ type Server interface {
 
 // Args ...
 type Args struct {
+	Name string
 	Host string
 	Port string
 
@@ -51,8 +54,13 @@ func NewServer(args Args) Server {
 		ll.Fatal("Args server invaild", l.Error(err))
 	}
 
-	grpcServer := grpc.NewServer(args.GRPCOption...)
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
+			grpcTransport.LogUnaryServerInterceptor(ll),
+		)),
+	)
 	return &server{
+		args.Name,
 		args.Host,
 		args.Port,
 		grpcServer,
@@ -61,6 +69,8 @@ func NewServer(args Args) Server {
 
 // Server ...
 type server struct {
+	name string
+
 	host string
 	port string
 
@@ -88,7 +98,7 @@ func (s server) Start() {
 	if err != nil {
 		ll.Fatal("Error start", l.Error(err))
 	}
-	ll.Info("GRPC Server started", l.String("listen", s.listen()))
+	ll.Info(s.name+" - GRPC Server started", l.String("listen", s.listen()))
 
 	go func() {
 		defer ctxCancel()

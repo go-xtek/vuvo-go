@@ -18,7 +18,9 @@ import (
 	"github.com/uber-go/zap"
 )
 
-const prefix = "github.com/richard-xtek/cse_exchange/"
+const pathFramework = "github.com/go-xtek/vuvo-go/"
+
+var prefixs []string
 
 var ll = New()
 
@@ -87,6 +89,7 @@ const development = true
 // New returns new zap.Logger
 func New() Logger {
 	_, filename, _, _ := runtime.Caller(1)
+
 	name := filepath.Dir(truncFilename(filename))
 
 	var enabler zap.AtomicLevel
@@ -265,8 +268,21 @@ func addHook() zap.Option {
 }
 
 func truncFilename(filename string) string {
+	var prefix string
+
+	var str = ""
+	for _, pf := range prefixs {
+		i := strings.Index(filename, pf)
+		if i != -1 {
+			prefix = pf
+		}
+		if pf == pathFramework && i != -1 {
+			str = "[VuVo] "
+		}
+	}
+
 	index := strings.Index(filename, prefix)
-	return filename[index+len(prefix):]
+	return str + filename[index+len(prefix):]
 }
 
 // Cheap integer to fixed-width decimal ASCII.  Give a negative width to avoid zero-padding.
@@ -289,6 +305,12 @@ func itoa(buf *[]byte, i int, wid int) {
 var envPatterns []*regexp.Regexp
 
 func init() {
+	prefixPathLogger := os.Getenv("PREFIX_PATH_LOG")
+	if prefixPathLogger != "" {
+		prefixs = append(prefixs, prefixPathLogger)
+	}
+	prefixs = append(prefixs, pathFramework)
+
 	envLog := os.Getenv("LOG_DEBUG")
 	if envLog == "" {
 		return
