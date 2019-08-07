@@ -10,10 +10,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-xtek/vuvo-go/tracing"
+
 	grpcTransport "github.com/go-xtek/vuvo-go/grpc"
 	"github.com/go-xtek/vuvo-go/l"
-
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
+	grpc_opentracing "github.com/grpc-ecosystem/go-grpc-middleware/tracing/opentracing"
+
 	"google.golang.org/grpc"
 )
 
@@ -39,6 +43,8 @@ type Args struct {
 	Port string
 
 	GRPCOption []grpc.ServerOption
+
+	JaegerAddress string
 }
 
 func (a *Args) validate() error {
@@ -54,11 +60,18 @@ func NewServer(args Args) Server {
 		ll.Fatal("Args server invaild", l.Error(err))
 	}
 
+	tracer, err := tracing.Init(args.Name, args.JaegerAddress)
+	if err != nil {
+	}
+
 	grpcServer := grpc.NewServer(
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
 			grpcTransport.LogUnaryServerInterceptor(ll),
+			grpc_ctxtags.UnaryServerInterceptor(),
+			grpc_opentracing.UnaryServerInterceptor(grpc_opentracing.WithTracer(tracer)),
 		)),
 	)
+
 	return &server{
 		args.Name,
 		args.Host,
