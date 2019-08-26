@@ -12,8 +12,10 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 
+	"github.com/go-xtek/vuvo-go/auth"
 	grpcTransport "github.com/go-xtek/vuvo-go/grpc"
 	"github.com/go-xtek/vuvo-go/l"
+	"github.com/go-xtek/vuvo-go/redis"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
 	grpc_opentracing "github.com/grpc-ecosystem/go-grpc-middleware/tracing/opentracing"
@@ -46,7 +48,10 @@ type Args struct {
 
 	JaegerAddress string
 
-	Tracer opentracing.Tracer
+	Tracer           opentracing.Tracer
+	RedisStore       redis.Store
+	TokenGenerator   auth.Generator
+	MethodExceptions []string
 }
 
 func (a *Args) validate() error {
@@ -71,6 +76,9 @@ func NewServer(args Args) Server {
 			grpcTransport.LogUnaryServerInterceptor(ll),
 			grpc_ctxtags.UnaryServerInterceptor(),
 			grpc_opentracing.UnaryServerInterceptor(grpc_opentracing.WithTracer(args.Tracer)),
+			grpcTransport.AuthUnaryServerInterceptor(
+				grpcTransport.Authentication(args.TokenGenerator, "", args.MethodExceptions),
+			),
 		)),
 	)
 
